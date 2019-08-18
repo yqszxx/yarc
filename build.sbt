@@ -48,11 +48,6 @@ val defaultVersions = Map(
 libraryDependencies ++= Seq("chisel3","chisel-iotesters").map {
   dep: String => "edu.berkeley.cs" %% dep % sys.props.getOrElse(dep + "Version", defaultVersions(dep)) }
 
-
-// The elf loader
-resolvers += "Spring Plugins Repository" at "http://repo.spring.io/plugins-release/"
-libraryDependencies += "net.fornwall.jelf" % "jelf" % "0.2"
-
 scalacOptions ++= scalacOptionsVersion(scalaVersion.value)
 
 javacOptions ++= javacOptionsVersion(scalaVersion.value)
