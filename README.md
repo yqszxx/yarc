@@ -3,4 +3,4 @@
 * Only word-aligned word load/store instruction allowed.
 * Write to `0xFFF8` to print, `0xFFFC` to terminate simulation.
 * Fill mem.txt with content dumped by yars.
-* Suppose to work with yqszxx/yars@e69bab04bf621e696da934e97e78e7f8da74342f
+* Suppose to work with [yqszxx/yars@e69bab](https://github.com/yqszxx/yars/commit/e69bab04bf621e696da934e97e78e7f8da74342f)
