@@ -19,10 +19,15 @@ class DataPath extends Module {
   // Memory
   val memory = Module(new Memory)
 
+  // Print Logic
+  when (memory.io.port2.address === "hFFF8".U && memory.io.port2.writeEnable) {
+    printf(p"$$0x${Hexadecimal(memory.io.port2.writeData)}$$\n")
+  }
+
   // Done logic
   val d = RegInit(false.B)
   val done = RegNext(d)
-  when (memory.io.port2.address === "h0100".U && memory.io.port2.writeEnable) {
+  when (memory.io.port2.address === "hFFFC".U && memory.io.port2.writeEnable) {
     printf(p"!!!!!!!!!!!!!!!!!!!DONE#0x${Hexadecimal(memory.io.port2.writeData)}#!!!!!!!!!!!!!!!!!!!\n")
     done := true.B
   } .otherwise {
