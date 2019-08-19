@@ -12,12 +12,7 @@ object FetchStage {
   }
 }
 
-class FetchStageControlSignals extends Bundle {
-}
-
 class FetchStageIO extends Bundle {
-  val control = new FetchStageControlSignals
-
   val data = new Bundle {
     val pc                       = Output(UInt(32.W))
     val instruction              = Output(UInt(32.W))
