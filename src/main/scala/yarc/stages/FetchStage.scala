@@ -18,6 +18,8 @@ class FetchStageIO extends Bundle {
     val instruction              = Output(UInt(32.W))
   }
 
+  val stall = Input(Bool())
+
   import yarc.elements.MemoryReadOnlyPort
   val mem = Flipped(new MemoryReadOnlyPort)
 }
@@ -30,7 +32,11 @@ class FetchStage extends Module {
 
   val pcSource = pcPlus4
 
-  programCounter := pcSource
+  when (!io.stall) {
+    programCounter := pcSource
+  } .otherwise {
+    programCounter := programCounter
+  }
 
   io.data.pc := programCounter
   io.mem.address := programCounter

@@ -30,7 +30,4 @@ class ExecuteStage extends Module {
   alu.io.operator2 := io.data.operator2
   alu.io.operation := io.control.aluOperation
   io.data.aluResult := alu.io.result
-
-  printf(p"Execute OP1: 0x${Hexadecimal(io.data.operator1)}; OP2: 0x${Hexadecimal(io.data.operator2)}; OP: ${Hexadecimal(io.control.aluOperation.asUInt)}\n")
-  printf(p"Execute Result: 0x${Hexadecimal(io.data.aluResult)}\n")
 }

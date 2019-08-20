@@ -27,9 +27,6 @@ class MemoryIO extends Bundle {
 class Memory extends Module {
   val io = IO(new MemoryIO)
 
-  printf(p"Mem1: ${Hexadecimal(io.port1.address)}\n")
-  printf(p"Mem2: ${Hexadecimal(io.port2.address)}\n")
-
   // assert the addresses are word aligned
   assert(io.port1.address(0) === 0.U && io.port1.address(1) === 0.U)
   assert(!io.port2.writeEnable || (io.port2.address(0) === 0.U && io.port2.address(1) === 0.U))

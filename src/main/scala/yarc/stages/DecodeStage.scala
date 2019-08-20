@@ -102,6 +102,11 @@ class DecodeStageIO extends Bundle {
     val registerSource2 = Output(UInt(32.W))
   }
 
+  val needStall = Output(Bool())
+  val executeStageWriteRegister = Input(UInt(5.W))
+  val memoryStageWriteRegister = Input(UInt(5.W))
+  val writebackStageWriteRegister = Input(UInt(5.W))
+
   import yarc.elements.RegisterFileReadPort
   val registers = Flipped(new RegisterFileReadPort)
 }
@@ -172,8 +177,10 @@ class DecodeStage extends Module {
   io.data.writeRegister := io.data.instruction(11, 7)
 
   // registers
-  io.registers.readRegister1 := io.data.instruction(19, 15)
-  io.registers.readRegister2 := io.data.instruction(24, 20)
+  val readRegister1 = io.data.instruction(19, 15)
+  val readRegister2 = io.data.instruction(24, 20)
+  io.registers.readRegister1 := readRegister1
+  io.registers.readRegister2 := readRegister2
   io.data.registerSource2 := io.registers.readData2
 
   // operator 1 mux
@@ -200,6 +207,23 @@ class DecodeStage extends Module {
     )
   )
 
-  printf(p"Decode OP1Source: ${Hexadecimal(operator1Source.asUInt)}; OP2Source: ${Hexadecimal(operator2Source.asUInt)}; ImmType: ${Hexadecimal(immediateType.asUInt)}\n")
-  printf(p"Decode ImmOut: ${Hexadecimal(immediateNumberGenerator.io.immediate)}\n")
+  // Stall logic
+  when (
+    (operator1Source === Operator1Source.registerSource1 && readRegister1 =/= 0.U(5.W) && (
+      readRegister1 === io.executeStageWriteRegister ||
+      readRegister1 === io.memoryStageWriteRegister ||
+      readRegister1 === io.writebackStageWriteRegister
+    )) ||
+    ((operator2Source === Operator2Source.registerSource2 || memoryIsWriting === MemoryIsWriting.yes) && readRegister2 =/= 0.U(5.W) &&  (
+      readRegister2 === io.executeStageWriteRegister ||
+      readRegister2 === io.memoryStageWriteRegister ||
+      readRegister2 === io.writebackStageWriteRegister
+    ))
+  ) {
+    io.needStall := true.B
+  } .otherwise {
+    io.needStall := false.B
+  }
+
+  printf(p"Decoding: ${Hexadecimal(io.data.instruction)}\n")
 }
