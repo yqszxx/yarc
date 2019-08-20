@@ -3,6 +3,7 @@
 package yarc
 
 import chisel3._
+import chisel3.util._
 import yarc.elements._
 import yarc.stages._
 
@@ -25,10 +26,19 @@ class DataPath extends Module {
   }
 
   // Done logic
-  val d = RegInit(false.B)
-  val done = RegNext(d)
+  val maxCycle = 32
+  
+  val maxCycleU = maxCycle.U
+  val cycle = RegInit(0.U(log2Ceil(maxCycle).W))
+  cycle := cycle + 1.U
+  printf(p"Cycle ${Decimal(cycle)}:\n")
+
+  val done = RegInit(false.B)
   when (memory.io.port2.address === "hFFFC".U && memory.io.port2.writeEnable) {
     printf(p"!!!!!!!!!!!!!!!!!!!DONE#0x${Hexadecimal(memory.io.port2.writeData)}#!!!!!!!!!!!!!!!!!!!\n")
+    done := true.B
+  } .elsewhen(cycle === maxCycleU - 1.U) {
+    printf(p"???????????????????DONE after ${Decimal(maxCycleU)} cycles???????????????????\n")
     done := true.B
   } .otherwise {
     done := false.B

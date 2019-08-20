@@ -10,11 +10,8 @@ object Main extends App {
 
   class Tester(c: DataPath) extends PeekPokeTester(c) {
     reset(10)
-    var cycle = 0
-    while (peek(c.io.done) != 1 && cycle < 32) {
-      println(s"Cycle $cycle:")
+    while (peek(c.io.done) != 1) {
       step(1)
-      cycle += 1
     }
   }
 
