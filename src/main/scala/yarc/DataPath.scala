@@ -27,7 +27,7 @@ class DataPath extends Module {
 
   // Done logic
   val maxCycle = 32
-  
+
   val maxCycleU = maxCycle.U
   val cycle = RegInit(0.U(log2Ceil(maxCycle).W))
   cycle := cycle + 1.U
