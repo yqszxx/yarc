@@ -88,6 +88,8 @@ object DecodeStage {
 
 class DecodeStageIO extends Bundle {
   val control = new Bundle {
+    val fetchStageKill = Output(Bool())
+    val fetchStageControlSignals = Output(new FetchStageControlSignals)
     val executeStageControlSignals = Output(new ExecuteStageControlSignals)
     val memoryStageControlSignals = Output(new MemoryStageControlSignals)
     val writebackStageControlSignals = Output(new WritebackStageControlSignals)
@@ -99,6 +101,7 @@ class DecodeStageIO extends Bundle {
     val operator1       = Output(UInt(32.W))
     val operator2       = Output(UInt(32.W))
     val writeRegister   = Output(UInt(5.W)) // TODO: find a better way to express register number
+    val registerSource1 = Output(UInt(32.W))
     val registerSource2 = Output(UInt(32.W))
   }
 
@@ -115,61 +118,66 @@ class DecodeStage extends Module {
   val io = IO(new DecodeStageIO)
 
   import Instructions._
+  import FetchStage.ProgramCounterSource
   import DecodeStage.{Operator1Source, Operator2Source}
   import MemoryStage.MemoryIsWriting
   import WritebackStage.{RegisterIsWriting, WritebackSource}
   import yarc.elements.ALU.ALUOperation
+  import yarc.elements.BranchConditionGenerator.BranchCondition
   import yarc.elements.ImmediateNumberGenerator.ImmediateNumberType
   val controlSignals = ListLookup(io.data.instruction,
-                List(Operator1Source.notRelated,      Operator2Source.notRelated,      ImmediateNumberType.notRelated, ALUOperation.notRelated, MemoryIsWriting.no,  RegisterIsWriting.no, WritebackSource.notRelated),
+                List(ProgramCounterSource.pcPlus4,      Operator1Source.notRelated,      Operator2Source.notRelated,      ImmediateNumberType.notRelated, ALUOperation.notRelated, BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.no, WritebackSource.notRelated),
     Array(
-      LW     -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.memoryReadData),
-      LB     -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.memoryReadData),
-      LBU    -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.memoryReadData),
-      LH     -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.memoryReadData),
-      LHU    -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.memoryReadData),
-      SW     -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.sType,      ALUOperation.add,        MemoryIsWriting.yes, RegisterIsWriting.no,  WritebackSource.notRelated),
-      SB     -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.sType,      ALUOperation.add,        MemoryIsWriting.yes, RegisterIsWriting.no,  WritebackSource.notRelated),
-      SH     -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.sType,      ALUOperation.add,        MemoryIsWriting.yes, RegisterIsWriting.no,  WritebackSource.notRelated),
+      LW     -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.memoryReadData),
+      LB     -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.memoryReadData),
+      LBU    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.memoryReadData),
+      LH     -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.memoryReadData),
+      LHU    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.memoryReadData),
+      SW     -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.sType,      ALUOperation.add,        BranchCondition.notRelated, MemoryIsWriting.yes, RegisterIsWriting.no,  WritebackSource.notRelated),
+      SB     -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.sType,      ALUOperation.add,        BranchCondition.notRelated, MemoryIsWriting.yes, RegisterIsWriting.no,  WritebackSource.notRelated),
+      SH     -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.sType,      ALUOperation.add,        BranchCondition.notRelated, MemoryIsWriting.yes, RegisterIsWriting.no,  WritebackSource.notRelated),
 
-      AUIPC  -> List(Operator1Source.pc             , Operator2Source.immediateNumber, ImmediateNumberType.uType,      ALUOperation.add,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      LUI    -> List(Operator1Source.notRelated     , Operator2Source.immediateNumber, ImmediateNumberType.uType,      ALUOperation.copy2,      MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      AUIPC  -> List(ProgramCounterSource.pcPlus4,      Operator1Source.pc             , Operator2Source.immediateNumber, ImmediateNumberType.uType,      ALUOperation.add,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      LUI    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.notRelated     , Operator2Source.immediateNumber, ImmediateNumberType.uType,      ALUOperation.copy2,      BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
 
-      ADDI   -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      ANDI   -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.and,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      ORI    -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.or,         MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      XORI   -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.xor,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      SLTI   -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.slt,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      SLTIU  -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.sltu,       MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      SLLI   -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.sll,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      SRAI   -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.sra,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      SRLI   -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.srl,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      ADDI   -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      ANDI   -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.and,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      ORI    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.or,         BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      XORI   -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.xor,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      SLTI   -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.slt,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      SLTIU  -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.sltu,       BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      SLLI   -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.sll,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      SRAI   -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.sra,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      SRLI   -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.srl,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
 
-      SLL    -> List(Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.sll,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      ADD    -> List(Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.add,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      SUB    -> List(Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.sub,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      SLT    -> List(Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.slt,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      SLTU   -> List(Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.sltu,       MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      AND    -> List(Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.and,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      OR     -> List(Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.or,         MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      XOR    -> List(Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.xor,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      SRA    -> List(Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.sra,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
-      SRL    -> List(Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.srl,        MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      SLL    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.sll,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      ADD    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.add,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      SUB    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.sub,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      SLT    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.slt,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      SLTU   -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.sltu,       BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      AND    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.and,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      OR     -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.or,         BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      XOR    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.xor,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      SRA    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.sra,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
+      SRL    -> List(ProgramCounterSource.pcPlus4,      Operator1Source.registerSource1, Operator2Source.registerSource2, ImmediateNumberType.notRelated, ALUOperation.srl,        BranchCondition.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.aluResult),
 
-      JAL    -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.jType,      ALUOperation.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.pcPlus4),
-      JALR   -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.notRelated, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.pcPlus4),
+      JAL    -> List(ProgramCounterSource.branchTarget, Operator1Source.pc,              Operator2Source.immediateNumber, ImmediateNumberType.jType,      ALUOperation.add,        BranchCondition.alwaysTrue, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.pcPlus4),
+      JALR   -> List(ProgramCounterSource.branchTarget, Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.iType,      ALUOperation.add,        BranchCondition.alwaysTrue, MemoryIsWriting.no,  RegisterIsWriting.yes, WritebackSource.pcPlus4),
 
-      BEQ    -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.notRelated, MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated),
-      BNE    -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.notRelated, MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated),
-      BGE    -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.notRelated, MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated),
-      BGEU   -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.notRelated, MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated),
-      BLT    -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.notRelated, MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated),
-      BLTU   -> List(Operator1Source.registerSource1, Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.notRelated, MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated)
+      BEQ    -> List(ProgramCounterSource.branchTarget, Operator1Source.pc,              Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.add,        BranchCondition.eq,         MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated),
+      BNE    -> List(ProgramCounterSource.branchTarget, Operator1Source.pc,              Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.add,        BranchCondition.ne,         MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated),
+      BGE    -> List(ProgramCounterSource.branchTarget, Operator1Source.pc,              Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.add,        BranchCondition.ge,         MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated),
+      BGEU   -> List(ProgramCounterSource.branchTarget, Operator1Source.pc,              Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.add,        BranchCondition.geu,        MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated),
+      BLT    -> List(ProgramCounterSource.branchTarget, Operator1Source.pc,              Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.add,        BranchCondition.lt,         MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated),
+      BLTU   -> List(ProgramCounterSource.branchTarget, Operator1Source.pc,              Operator2Source.immediateNumber, ImmediateNumberType.bType,      ALUOperation.add,        BranchCondition.ltu,        MemoryIsWriting.no,  RegisterIsWriting.no,  WritebackSource.notRelated)
     )
   )
-  val operator1Source :: operator2Source :: immediateType :: aluOperation :: memoryIsWriting :: registerIsWriting :: writebackSource :: Nil = controlSignals
+  val pcSource :: operator1Source :: operator2Source :: immediateType :: aluOperation :: branchCondition :: memoryIsWriting :: registerIsWriting :: writebackSource :: Nil = controlSignals
   // exported control signals
+  io.control.fetchStageControlSignals.pcSource := pcSource
+  io.control.fetchStageKill := (pcSource =/= ProgramCounterSource.pcPlus4)
   io.control.executeStageControlSignals.aluOperation := aluOperation
+  io.control.executeStageControlSignals.branchCondition := branchCondition
   io.control.memoryStageControlSignals.isWriting := memoryIsWriting
   io.control.writebackStageControlSignals.isWriting := registerIsWriting
   io.control.writebackStageControlSignals.writebackSource := writebackSource
@@ -181,6 +189,7 @@ class DecodeStage extends Module {
   val readRegister2 = io.data.instruction(24, 20)
   io.registers.readRegister1 := readRegister1
   io.registers.readRegister2 := readRegister2
+  io.data.registerSource1 := io.registers.readData1
   io.data.registerSource2 := io.registers.readData2
 
   // operator 1 mux
@@ -209,12 +218,12 @@ class DecodeStage extends Module {
 
   // Stall logic
   when (
-    (operator1Source === Operator1Source.registerSource1 && readRegister1 =/= 0.U(5.W) && (
+    ((operator1Source === Operator1Source.registerSource1 || pcSource === ProgramCounterSource.branchTarget) && readRegister1 =/= 0.U(5.W) && (
       readRegister1 === io.executeStageWriteRegister ||
       readRegister1 === io.memoryStageWriteRegister ||
       readRegister1 === io.writebackStageWriteRegister
     )) ||
-    ((operator2Source === Operator2Source.registerSource2 || memoryIsWriting === MemoryIsWriting.yes) && readRegister2 =/= 0.U(5.W) &&  (
+    ((operator2Source === Operator2Source.registerSource2 || memoryIsWriting === MemoryIsWriting.yes || pcSource === ProgramCounterSource.branchTarget) && readRegister2 =/= 0.U(5.W) &&  (
       readRegister2 === io.executeStageWriteRegister ||
       readRegister2 === io.memoryStageWriteRegister ||
       readRegister2 === io.writebackStageWriteRegister
