@@ -8,51 +8,24 @@ import yarc.elements._
 import yarc.stages._
 
 class PipelineIO extends Bundle {
-  val done = Output(Bool())
+  val instructionMemoryPort = Flipped(new MemoryReadOnlyPort)
+  val dataMemoryPort = Flipped(new MemoryReadWritePort)
 }
 
-class DataPath extends Module {
+class Pipeline extends Module {
   val io = IO(new PipelineIO)
 
   // Register File
   val registerFile = Module(new RegisterFile)
 
-  // Memory
-  val memory = Module(new Memory)
-
-  // Print Logic
-  when (memory.io.port2.address === "hFFF8".U && memory.io.port2.writeEnable) {
-    printf(p"$$0x${Hexadecimal(memory.io.port2.writeData)}$$\n")
-  }
-
-  // Done logic
-  val maxCycle = 10000
-
-  val maxCycleU = maxCycle.U
-  val cycle = RegInit(0.U(log2Ceil(maxCycle).W))
-  cycle := cycle + 1.U
-  printf(p"Cycle ${Decimal(cycle)}:\n")
-
-  val done = RegInit(false.B)
-  when (memory.io.port2.address === "hFFFC".U && memory.io.port2.writeEnable) {
-    printf(p"!!!!!!!!!!!!!!!!!!!DONE#0x${Hexadecimal(memory.io.port2.writeData)}#!!!!!!!!!!!!!!!!!!!\n")
-    done := true.B
-  } .elsewhen(cycle === maxCycleU - 1.U) {
-    printf(p"???????????????????DONE after ${Decimal(maxCycleU)} cycles???????????????????\n")
-    done := true.B
-  } .otherwise {
-    done := false.B
-  }
-  io.done := done
-
   val bubblePC = "hFFFF".U(32.W)
 
   // Fetch Stage
   val fetchStage = Module(new FetchStage)
-  memory.io.port1 <> fetchStage.io.mem
+  io.instructionMemoryPort <> fetchStage.io.mem
 
   // Decode Stage
-  val decodeStageInstruction = Reg(UInt(32.W))
+  val decodeStageInstruction = RegInit("h00000013".U(32.W)) // nop
   val decodeStagePC = Reg(UInt(32.W))
 
   val decodeStage = Module(new DecodeStage)
@@ -134,7 +107,7 @@ class DataPath extends Module {
 
   val memoryStage = Module(new MemoryStage)
   memoryStage.io.control := memoryStageControlSignals
-  memoryStage.io.mem <> memory.io.port2
+  memoryStage.io.mem <> io.dataMemoryPort
   memoryStage.io.data.address := memoryStageALUResult
   memoryStage.io.data.writeData := memoryStageRegisterSource2
 

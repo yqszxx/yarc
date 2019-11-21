@@ -31,10 +31,9 @@ class Memory extends Module {
   assert(io.port1.address(0) === 0.U && io.port1.address(1) === 0.U)
   assert(!io.port2.writeEnable || (io.port2.address(0) === 0.U && io.port2.address(1) === 0.U))
 
-  val memory = Mem(0xffff, UInt(32.W))
-  loadMemoryFromFile(memory, "mem.txt")
+  val memory = Mem(0x200, UInt(32.W))
+//  loadMemoryFromFile(memory, "mem.txt")
 
-  val a = io.port1.address(31, 2)
   val actualAddress1 = io.port1.address(31, 2)
   io.port1.readData := memory.read(actualAddress1)
 
