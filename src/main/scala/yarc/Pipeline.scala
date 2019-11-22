@@ -18,6 +18,16 @@ class Pipeline extends Module {
   // Register File
   val registerFile = Module(new RegisterFile)
 
+  // reset wires
+  val fetchStageControlSignalsReset = Wire(new FetchStageControlSignals)
+  fetchStageControlSignalsReset.defaults()
+  val executeStageControlSignalsReset = Wire(new ExecuteStageControlSignals)
+  executeStageControlSignalsReset.defaults()
+  val memoryStageControlSignalsReset = Wire(new MemoryStageControlSignals)
+  memoryStageControlSignalsReset.defaults()
+  val writebackStageControlSignalsReset = Wire(new WritebackStageControlSignals)
+  writebackStageControlSignalsReset.defaults()
+
   val bubblePC = "hFFFF".U(32.W)
 
   // Fetch Stage
@@ -26,7 +36,7 @@ class Pipeline extends Module {
 
   // Decode Stage
   val decodeStageInstruction = RegInit("h00000013".U(32.W)) // nop
-  val decodeStagePC = Reg(UInt(32.W))
+  val decodeStagePC = RegInit(0.U(32.W))
 
   val decodeStage = Module(new DecodeStage)
   decodeStage.io.registers <> registerFile.io.readPort
@@ -46,16 +56,16 @@ class Pipeline extends Module {
   printf(p"Decode PC: 0x${Hexadecimal(decodeStagePC)}\n")
 
   // Execute Stage
-  val fetchStageControlSignals = Reg(new FetchStageControlSignals)
-  val executeStageControlSignals = Reg(new ExecuteStageControlSignals)
-  val memoryStageControlSignalsInExecuteStage = Reg(new MemoryStageControlSignals)
-  val writebackStageControlSignalsInExecuteStage = Reg(new WritebackStageControlSignals)
-  val executeStagePC = Reg(UInt(32.W))
-  val executeStageWriteRegister = Reg(UInt(5.W))
-  val executeStageRegisterSource1 = Reg(UInt(32.W))
-  val executeStageRegisterSource2 = Reg(UInt(32.W))
-  val executeStageOperator1 = Reg(UInt(32.W))
-  val executeStageOperator2 = Reg(UInt(32.W))
+  val fetchStageControlSignals = RegInit(new FetchStageControlSignals, fetchStageControlSignalsReset)
+  val executeStageControlSignals = RegInit(new ExecuteStageControlSignals, executeStageControlSignalsReset)
+  val memoryStageControlSignalsInExecuteStage = RegInit(new MemoryStageControlSignals, memoryStageControlSignalsReset)
+  val writebackStageControlSignalsInExecuteStage = RegInit(new WritebackStageControlSignals, writebackStageControlSignalsReset)
+  val executeStagePC = RegInit(0.U(32.W))
+  val executeStageWriteRegister = RegInit(0.U(5.W))
+  val executeStageRegisterSource1 = RegInit(0.U(32.W))
+  val executeStageRegisterSource2 = RegInit(0.U(32.W))
+  val executeStageOperator1 = RegInit(0.U(32.W))
+  val executeStageOperator2 = RegInit(0.U(32.W))
 
   // stall logic of this one resides in fetch stage
   fetchStageControlSignals := decodeStage.io.control.fetchStageControlSignals
@@ -98,12 +108,12 @@ class Pipeline extends Module {
   printf(p"Execute PC: 0x${Hexadecimal(executeStagePC)}\n")
 
   // Memory Stage
-  val memoryStageControlSignals = RegNext(memoryStageControlSignalsInExecuteStage)
-  val writebackStageControlSignalsInMemoryStage = RegNext(writebackStageControlSignalsInExecuteStage)
-  val memoryStagePC = RegNext(executeStagePC)
-  val memoryStageWriteRegister = RegNext(executeStageWriteRegister)
-  val memoryStageALUResult = RegNext(executeStage.io.data.aluResult)
-  val memoryStageRegisterSource2 = RegNext(executeStageRegisterSource2)
+  val memoryStageControlSignals = RegNext(memoryStageControlSignalsInExecuteStage, memoryStageControlSignalsReset)
+  val writebackStageControlSignalsInMemoryStage = RegNext(writebackStageControlSignalsInExecuteStage, writebackStageControlSignalsReset)
+  val memoryStagePC = RegNext(executeStagePC, 0.U(32.W))
+  val memoryStageWriteRegister = RegNext(executeStageWriteRegister, 0.U(5.W))
+  val memoryStageALUResult = RegNext(executeStage.io.data.aluResult, 0.U(32.W))
+  val memoryStageRegisterSource2 = RegNext(executeStageRegisterSource2, 0.U(32.W))
 
   val memoryStage = Module(new MemoryStage)
   memoryStage.io.control := memoryStageControlSignals
@@ -114,11 +124,11 @@ class Pipeline extends Module {
   printf(p"Memory PC: 0x${Hexadecimal(memoryStagePC)}\n")
 
   // Writeback Stage
-  val writebackStageControlSignals = RegNext(writebackStageControlSignalsInMemoryStage)
-  val writebackStagePC = RegNext(memoryStagePC)
-  val writebackStageWriteRegister = RegNext(memoryStageWriteRegister)
-  val writebackStageALUResult = RegNext(memoryStageALUResult)
-  val writebackStageMemoryReadData = RegNext(memoryStage.io.data.readData)
+  val writebackStageControlSignals = RegNext(writebackStageControlSignalsInMemoryStage, writebackStageControlSignalsReset)
+  val writebackStagePC = RegNext(memoryStagePC, 0.U(32.W))
+  val writebackStageWriteRegister = RegNext(memoryStageWriteRegister, 0.U(5.W))
+  val writebackStageALUResult = RegNext(memoryStageALUResult, 0.U(32.W))
+  val writebackStageMemoryReadData = RegNext(memoryStage.io.data.readData, 0.U(32.W))
 
   val writebackStage = Module(new WritebackStage)
   writebackStage.io.control := writebackStageControlSignals

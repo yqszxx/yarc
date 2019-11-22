@@ -16,6 +16,10 @@ object FetchStage {
 class FetchStageControlSignals extends Bundle {
   import yarc.stages.FetchStage.ProgramCounterSource
   val pcSource    = ProgramCounterSource()
+
+  def defaults(): Unit = {
+    pcSource := ProgramCounterSource.pcPlus4
+  }
 }
 
 class FetchStageIO extends Bundle {

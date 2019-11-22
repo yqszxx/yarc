@@ -10,6 +10,11 @@ class ExecuteStageControlSignals extends Bundle {
   val aluOperation    = ALUOperation()
   import yarc.elements.BranchConditionGenerator.BranchCondition
   val branchCondition = BranchCondition()
+
+  def defaults(): Unit = {
+    aluOperation := ALUOperation.notRelated
+    branchCondition := BranchCondition.notRelated
+  }
 }
 
 class ExecuteIO extends Bundle {

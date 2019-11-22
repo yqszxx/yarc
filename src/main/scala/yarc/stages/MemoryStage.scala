@@ -16,6 +16,10 @@ object MemoryStage {
 class MemoryStageControlSignals extends Bundle {
   import MemoryStage._
   val isWriting = MemoryIsWriting()
+
+  def defaults(): Unit = {
+    isWriting := MemoryIsWriting.no
+  }
 }
 
 class MemoryStageIO extends Bundle {
