@@ -30,8 +30,8 @@ class BranchConditionGenerator extends Module {
     io.condition.asUInt,
     false.B,
     Array(
-      BranchCondition.eq.asUInt  -> (io.operator1 === io.operator1),
-      BranchCondition.ne.asUInt  -> (io.operator1 =/= io.operator1),
+      BranchCondition.eq.asUInt  -> (io.operator1 === io.operator2),
+      BranchCondition.ne.asUInt  -> (io.operator1 =/= io.operator2),
       BranchCondition.lt.asUInt  -> (io.operator1.asSInt < io.operator2.asSInt),
       BranchCondition.ltu.asUInt -> (io.operator1 < io.operator2),
       BranchCondition.ge.asUInt  -> (io.operator1.asSInt >= io.operator2.asSInt),
