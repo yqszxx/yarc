@@ -15,9 +15,6 @@ import uart._
  */
 class UART extends Module {
   val io = IO(new Bundle {
-
-    val rxAvailable = Output(Bool())
-
     val external = new Bundle {
       val rxd = Input(Bool())
       val txd = Output(Bool())
@@ -39,10 +36,6 @@ class UART extends Module {
 
   val rxAvailable = RegInit(false.B)
   val txBegin = RegInit(false.B)
-
-
-  io.rxAvailable := rxAvailable
-
 
   val rxData = RegInit(0.U(8.W))
   val txData = RegInit(0.U(8.W))

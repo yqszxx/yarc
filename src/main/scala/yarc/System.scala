@@ -11,7 +11,6 @@ class System extends Module {
     val gpio = Output(Bool())
     val rxd  = Input(Bool())
     val txd  = Output(Bool())
-    val rxava = Output(Bool())
   })
 
   val pipeline = Module(new Pipeline)
@@ -52,10 +51,6 @@ class System extends Module {
   uart.io.readPort.ready := false.B
   uart.io.address.bits := address(3, 2)
   uart.io.writePort.bits := writeData(7, 0)
-
-
-  io.rxava := uart.io.rxAvailable
-
 
   when (writeEnable) {
     switch (addressH) {
