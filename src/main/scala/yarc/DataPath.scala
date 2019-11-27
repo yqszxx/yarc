@@ -34,7 +34,7 @@ class DataPath extends Module {
   printf(p"Cycle ${Decimal(cycle)}:\n")
 
   val done = RegInit(false.B)
-  when (memory.io.port2.address === "hFFFC".U && memory.io.port2.writeEnable) {
+  when (memory.io.port2.address(31, 24) === "hFF".U && memory.io.port2.writeEnable) {
     printf(p"!!!!!!!!!!!!!!!!!!!DONE#0x${Hexadecimal(memory.io.port2.writeData)}#!!!!!!!!!!!!!!!!!!!\n")
     done := true.B
   } .elsewhen(cycle === maxCycleU - 1.U) {

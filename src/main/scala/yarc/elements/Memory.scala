@@ -3,6 +3,7 @@
 package yarc.elements
 
 import chisel3._
+import chisel3.util
 import chisel3.util.experimental.loadMemoryFromFile
 
 class MemoryReadOnlyPort extends Bundle {
@@ -15,6 +16,7 @@ class MemoryReadWritePort extends Bundle{
   val readData    = Output(UInt(32.W))
   val writeEnable = Input(Bool())
   val writeData   = Input(UInt(32.W))
+  val writeMask   = Input(Vec(4, Bool()))
 }
 class MemoryIO extends Bundle {
   val port1 = new MemoryReadOnlyPort
@@ -27,20 +29,23 @@ class MemoryIO extends Bundle {
 class Memory extends Module {
   val io = IO(new MemoryIO)
 
-  // assert the addresses are word aligned
-  assert(io.port1.address(0) === 0.U && io.port1.address(1) === 0.U)
-  assert(!io.port2.writeEnable || (io.port2.address(0) === 0.U && io.port2.address(1) === 0.U))
+  val memory = Mem(0xffff, Vec(4, UInt(8.W)))
+  loadMemoryFromFile(memory, "/tmp/yarc.txt")
 
-  val memory = Mem(0xffff, UInt(32.W))
-  loadMemoryFromFile(memory, "mem.txt")
-
-  val a = io.port1.address(31, 2)
   val actualAddress1 = io.port1.address(31, 2)
-  io.port1.readData := memory.read(actualAddress1)
+  val readData1 = memory.read(actualAddress1)
+  io.port1.readData := util.Cat(readData1(3), readData1(2), readData1(1), readData1(0))
 
   val actualAddress2 = io.port2.address(31, 2)
-  io.port2.readData := memory.read(actualAddress2)
+  val writeData = io.port2.writeData
+  val readData2 = memory.read(actualAddress2)
+  io.port2.readData := util.Cat(readData2(3), readData2(2), readData2(1), readData2(0))
   when (io.port2.writeEnable) {
-    memory.write(actualAddress2, io.port2.writeData)
+    memory.write(actualAddress2, VecInit(Seq(
+      writeData(7, 0),
+      writeData(15, 8),
+      writeData(23, 16),
+      writeData(31, 24)
+    )), io.port2.writeMask)
   }
 }
