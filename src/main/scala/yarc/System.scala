@@ -20,6 +20,7 @@ class System extends Module {
   val addressH = address(31, 24)
   val writeEnable = pipeline.io.dataMemoryPort.writeEnable
   val writeData = pipeline.io.dataMemoryPort.writeData
+  val writeMask = pipeline.io.dataMemoryPort.writeMask
   val readData = pipeline.io.dataMemoryPort.readData
   readData := "hDEADBEEF".U
 
@@ -28,6 +29,7 @@ class System extends Module {
   memory.io.port2.address := address
   memory.io.port2.writeData := writeData
   memory.io.port2.writeEnable := false.B
+  memory.io.port2.writeMask := writeMask
 
   val rom = Module(new ROM)
   rom.io.address := pipeline.io.instructionMemoryPort.address
