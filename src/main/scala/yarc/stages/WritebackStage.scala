@@ -24,6 +24,11 @@ class WritebackStageControlSignals extends Bundle {
   import WritebackStage._
   val isWriting = RegisterIsWriting()
   val writebackSource = WritebackSource()
+
+  def defaults(): Unit = {
+    isWriting := RegisterIsWriting.no
+    writebackSource := WritebackSource.notRelated
+  }
 }
 
 class WritebackStageIO extends Bundle {
