@@ -30,7 +30,7 @@ class Memory extends Module {
   val io = IO(new MemoryIO)
 
   val memory = Mem(0xffff, Vec(4, UInt(8.W)))
-  loadMemoryFromFile(memory, "/tmp/yarc.txt")
+  loadMemoryFromFile(memory, "../riscv-tests/isa/build/yarc.txt")
 
   val actualAddress1 = io.port1.address(31, 2)
   val readData1 = memory.read(actualAddress1)
