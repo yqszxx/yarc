@@ -35,5 +35,5 @@ jobs:
       # run tests!
       - run: git clone https://github.com/yqszxx/yarc-testsw --branch isa
       - run: wget https://static.dev.sifive.com/dev-tools/riscv64-unknown-elf-gcc-8.3.0-2019.08.0-x86_64-linux-ubuntu14.tar.gz && tar xvf riscv64-unknown-elf-gcc-8.3.0-2019.08.0-x86_64-linux-ubuntu14.tar.gz -C ./yarc-testsw/isa/
-      - run: wget https://github.com/yqszxx/yars/releases/download/v1.0.0-RC1/yars_linux -O ./yarc-testsw/isa/yars_linux
+      - run: wget https://github.com/yqszxx/yars/releases/download/v1.0.0-RC1/yars_linux -O ./yarc-testsw/isa/yars_linux && chomd +x ./yarc-testsw/isa/yars_linux
       - run: cd yarc-testsw/isa && make run
